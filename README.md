@@ -1,5 +1,10 @@
 # QVeris Plugin for OpenClaw
 
+[![npm version](https://img.shields.io/npm/v/@qverisai/qveris?label=npm)](https://www.npmjs.com/package/@qverisai/qveris)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-%3E%3D2026.3.22-blue)](https://github.com/openclaw/openclaw)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
 OpenClaw plugin that gives agents dynamic capability discovery and tool calling via the [QVeris](https://qveris.ai) API.
 
 ## What it does
