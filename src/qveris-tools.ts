@@ -239,20 +239,6 @@ export function createQverisTools(options: {
         readNumberParam(params, "max_response_size", { integer: true }) ?? maxResponseSize;
       const timeoutOverride = readNumberParam(params, "timeout_seconds");
 
-      if (!searchId) {
-        return jsonResult({
-          success: false,
-          error_type: "tool_not_discovered",
-          detail:
-            "This tool_id has not been discovered in the current session. " +
-            "Run qveris_discover first to search for the tool, then retry qveris_call with the same tool_id. " +
-            "Do NOT bypass this workflow by calling QVeris /search or /tools/execute directly.",
-          retry_hint:
-            "Use qveris_discover to find the tool, then call it with the tool_id from the results.",
-          note: QVERIS_WORKFLOW_NOTE,
-        } satisfies QverisErrorResult);
-      }
-
       let toolParams: Record<string, unknown>;
       try {
         toolParams = JSON.parse(paramsToToolRaw) as Record<string, unknown>;

@@ -421,8 +421,14 @@ describe("createQverisTools", () => {
     expect(String(parsed.note)).toContain("Stay inside the QVeris tool workflow");
   });
 
-  it("qveris_call returns structured error when tool not discovered", async () => {
-    const fetchMock = vi.fn();
+  it("qveris_call proceeds with null search_id when tool not discovered", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ execution_id: "exec-1", success: true, result: { data: "ok" } }),
+      text: () => Promise.resolve(""),
+      headers: new Headers(),
+    });
     globalThis.fetch = fetchMock as typeof globalThis.fetch;
     const tools = createQverisTools({ api: fakeApi(), ctx: fakeCtx() });
     const callTool = tools!.find((t) => t.name === "qveris_call")!;
@@ -431,11 +437,11 @@ describe("createQverisTools", () => {
       tool_id: "unknown-tool-xyz",
       params_to_tool: '{"city": "London"}',
     });
-    const parsed = parseToolResult(result);
-    expect(parsed.success).toBe(false);
-    expect(parsed.error_type).toBe("tool_not_discovered");
-    expect(String(parsed.detail)).toContain("not been discovered");
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/tools/execute");
+    const body = JSON.parse(init.body);
+    expect(body.search_id).toBeNull();
   });
 
   it("qveris_call auto-resolves search_id from discover tracker", async () => {
@@ -608,8 +614,29 @@ describe("createQverisTools", () => {
     expect(parsed.error_type).toBe("json_parse_error");
   });
 
-  it("session state is isolated per factory call", async () => {
-    globalThis.fetch = mockFetchJson(SAMPLE_DISCOVER_RESPONSE);
+  it("session state is isolated per factory call — undiscovered call uses null search_id", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/search")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(SAMPLE_DISCOVER_RESPONSE),
+          text: () => Promise.resolve(""),
+          headers: new Headers(),
+        });
+      }
+      if (typeof url === "string" && url.includes("/tools/execute")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(SAMPLE_INVOKE_RESPONSE),
+          text: () => Promise.resolve(""),
+          headers: new Headers(),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve(""), headers: new Headers() });
+    });
+    globalThis.fetch = fetchMock;
     const tools1 = createQverisTools({ api: fakeApi(), ctx: fakeCtx({ sessionKey: "s1" }) });
     const tools2 = createQverisTools({ api: fakeApi(), ctx: fakeCtx({ sessionKey: "s2" }) });
 
@@ -618,13 +645,15 @@ describe("createQverisTools", () => {
 
     await discover1.execute("d1", { query: "weather forecast API" });
 
-    // tools2 should not see tools1's discovery
-    const result = await callTool2.execute("c1", {
+    // tools2 should not see tools1's discovery — call proceeds with null search_id
+    await callTool2.execute("c1", {
       tool_id: "openweathermap.weather.execute.v1",
       params_to_tool: '{"city": "London"}',
     });
-    const parsed = parseToolResult(result);
-    expect(parsed.error_type).toBe("tool_not_discovered");
+    const executeCall = fetchMock.mock.calls.find(([u]: [string]) => u.includes("/tools/execute"));
+    expect(executeCall).toBeDefined();
+    const body = JSON.parse(executeCall![1].body);
+    expect(body.search_id).toBeNull();
   });
 });
 

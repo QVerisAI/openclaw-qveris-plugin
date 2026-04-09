@@ -120,7 +120,7 @@ export async function qverisDiscover(params: {
 
 export async function qverisCall(params: {
   toolId: string;
-  searchId: string;
+  searchId?: string;
   sessionId: string;
   parameters: Record<string, unknown>;
   maxResponseSize: number;
@@ -143,7 +143,7 @@ export async function qverisCall(params: {
         body: JSON.stringify({
           parameters: params.parameters,
           max_response_size: params.maxResponseSize,
-          search_id: params.searchId,
+          search_id: params.searchId ?? null,
           session_id: params.sessionId,
         }),
         signal: controller.signal,
